@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"flag"
-	"net"
 	"fmt"
+	"net"
 )
 
 type Message struct {
@@ -13,22 +13,34 @@ type Message struct {
 }
 
 func handleError(err error) {
-	// TODO: all
+	// all
 	// Deal with an error event.
+	if err != nil {
+		fmt.Println("error")
+	}
+
 }
 
 func acceptConns(ln net.Listener, conns chan net.Conn) {
-	// TODO: all
+	for {
+		conn, _ := ln.Accept()
+		conns <- conn
+	}
 	// Continuously accept a network connection from the Listener
 	// and add it to the channel for handling connections.
 }
 
 func handleClient(client net.Conn, clientid int, msgs chan Message) {
-	// TODO: all
 	// So long as this connection is alive:
-	// Read in new messages as delimited by '\n's
-	// Tidy up each message and add it to the messages channel,
-	// recording which client it came from.
+	reader := bufio.NewReader(client)
+	for {
+		// Read in new messages as delimited by '\n's
+		msg, _ := reader.ReadString('\n')
+		// Tidy up each message and add it to the messages channel,
+		// recording which client it came from.
+		msgs <- Message{clientid, msg}
+	}
+
 }
 
 func main() {
@@ -37,7 +49,8 @@ func main() {
 	portPtr := flag.String("port", ":8030", "port to listen on")
 	flag.Parse()
 
-	//TODO Create a Listener for TCP connections on the port given above.
+	//Create a Listener for TCP connections on the port given above.
+	ln, _ := net.Listen("tcp", *portPtr)
 
 	//Create a channel for connections
 	conns := make(chan net.Conn)
@@ -48,16 +61,22 @@ func main() {
 
 	//Start accepting connections
 	go acceptConns(ln, conns)
+	clientId := 0
 	for {
 		select {
 		case conn := <-conns:
-			//TODO Deal with a new connection
+
+			// Deal with a new connection
 			// - assign a client ID
 			// - add the client to the clients map
+			clients[clientId] = conn
 			// - start to asynchronously handle messages from this client
+			handleClient(conn, clientId, msgs)
+			clientId++
 		case msg := <-msgs:
-			//TODO Deal with a new message
+			// Deal with a new message
 			// Send the message to all clients that aren't the sender
+			msgs <- msg
 		}
 	}
 }
